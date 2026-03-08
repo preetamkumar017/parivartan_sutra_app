@@ -1,0 +1,41 @@
+# Parivartan Sutra - Production Flutter Base
+
+## Tasks
+
+- [x] Create TODO.md
+- [x] Update pubspec.yaml with dependencies
+- [x] lib/main.dart
+- [x] lib/app/app.dart
+- [x] lib/app/bindings/initial_binding.dart
+- [x] lib/app/routes/app_routes.dart
+- [x] lib/app/routes/app_pages.dart
+- [x] lib/core/config/env_config.dart
+- [x] lib/core/constants/app_constants.dart
+- [x] lib/core/errors/app_exception.dart
+- [x] lib/core/errors/error_handler.dart
+- [x] lib/core/localization/app_translations.dart
+- [x] lib/core/localization/en_US.dart
+- [x] lib/core/localization/hi_IN.dart
+- [x] lib/core/network/api_client.dart
+- [x] lib/core/network/api_endpoints.dart
+- [x] lib/core/network/api_response.dart
+- [x] lib/core/services/api_service.dart
+- [x] lib/core/services/secure_storage_service.dart
+- [x] lib/core/services/shared_prefs_service.dart
+- [x] lib/core/session/session_manager.dart
+- [x] lib/core/theme/app_colors.dart
+- [x] lib/core/theme/app_text_styles.dart
+- [x] lib/core/theme/app_theme.dart
+- [x] lib/core/utils/app_logger.dart
+- [x] lib/core/utils/responsive_helper.dart
+- [x] lib/core/utils/validators.dart
+- [x] lib/shared/widgets/app_button.dart
+- [x] lib/shared/widgets/app_loader.dart
+- [x] lib/shared/widgets/app_text_field.dart
+- [x] lib/features/base/base_controller.dart
+- [x] lib/features/base/base_view.dart
+- [x] lib/features/home/bindings/home_binding.dart
+- [x] lib/features/home/controllers/home_controller.dart
+- [x] lib/features/home/models/home_model.dart
+- [x] lib/features/home/views/home_view.dart
+- [x] Run flutter pub get ✅
