@@ -30,9 +30,8 @@ Future<void> main() async {
   await SharedPrefsService.instance.init();
 
   // ── Session Restore ────────────────────────────────────────────────────────
-  final sessionRestored = await SessionManager.instance.restoreSession();
-  final initialRoute =
-      sessionRestored ? AppRoutes.home : AppRoutes.login;
+  await SessionManager.instance.restoreSession();
+  final initialRoute = AppRoutes.splash;
 
   AppLogger.info('App',
       '🚀 Parivartan Sutra [${EnvConfig.instance.environment.name.toUpperCase()}]');
