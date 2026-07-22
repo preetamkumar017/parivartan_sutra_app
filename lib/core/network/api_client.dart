@@ -27,8 +27,14 @@ class ApiClient {
   }
 
   Map<String, String> _buildHeaders({Map<String, String>? extra}) {
+    // No explicit Content-Type here: the backend reads bodies via
+    // CodeIgniter's `getPost()` everywhere (confirmed across AuthController,
+    // ParentController, InterviewController, StrategyController), which means
+    // every request body must be `application/x-www-form-urlencoded`, not
+    // JSON. `http.Client` sets that header itself when `body` is a
+    // `Map<String, String>` (see post/put/patch below) — setting it here too
+    // would just duplicate it.
     final headers = <String, String>{
-      'Content-Type': AppConstants.contentTypeJson,
       'Accept': AppConstants.contentTypeJson,
     };
     if (_authToken != null && _authToken!.isNotEmpty) {
@@ -37,6 +43,19 @@ class ApiClient {
     }
     if (extra != null) headers.addAll(extra);
     return headers;
+  }
+
+  /// Converts a JSON-shaped body into form fields the backend's `getPost()`
+  /// can read. `null` values are dropped so optional params (e.g. `device`)
+  /// aren't sent as the literal string `"null"`.
+  Map<String, String> _toFormFields(Map<String, dynamic>? body) {
+    if (body == null) return {};
+    final fields = <String, String>{};
+    for (final entry in body.entries) {
+      if (entry.value == null) continue;
+      fields[entry.key] = entry.value.toString();
+    }
+    return fields;
   }
 
   Uri _buildUri(String endpoint, {Map<String, dynamic>? queryParams}) {
@@ -86,7 +105,7 @@ class ApiClient {
           .post(
             uri,
             headers: _buildHeaders(extra: headers),
-            body: body != null ? jsonEncode(body) : null,
+            body: _toFormFields(body),
           )
           .timeout(const Duration(milliseconds: AppConstants.connectTimeoutMs));
 
@@ -110,7 +129,7 @@ class ApiClient {
           .put(
             uri,
             headers: _buildHeaders(extra: headers),
-            body: body != null ? jsonEncode(body) : null,
+            body: _toFormFields(body),
           )
           .timeout(const Duration(milliseconds: AppConstants.connectTimeoutMs));
 
@@ -134,7 +153,7 @@ class ApiClient {
           .patch(
             uri,
             headers: _buildHeaders(extra: headers),
-            body: body != null ? jsonEncode(body) : null,
+            body: _toFormFields(body),
           )
           .timeout(const Duration(milliseconds: AppConstants.connectTimeoutMs));
 
@@ -167,47 +186,49 @@ class ApiClient {
     http.Response response,
     T Function(dynamic)? fromJson,
   ) {
-    AppLogger.response(response.statusCode, response.request?.url.toString() ?? '');
-
     final statusCode = response.statusCode;
+    AppLogger.response(statusCode, response.request?.url.toString() ?? '');
 
-    if (statusCode == 401) {
-      throw AppException.unauthorized();
-    }
-
-    if (statusCode == 403) {
-      throw AppException.forbidden();
-    }
-
-    if (statusCode == 404) {
-      throw AppException.notFound();
-    }
-
-    if (statusCode >= 500) {
-      throw AppException.serverError();
-    }
-
+    // Decode first so the backend's own `message` (e.g. "Invalid password",
+    // "Mobile number not registered") can be surfaced instead of a generic
+    // one, regardless of status code.
+    dynamic decoded;
     try {
-      final decoded = jsonDecode(response.body);
-      AppLogger.response(statusCode, '', body: decoded);
-
-      if (statusCode >= 200 && statusCode < 300) {
-        if (decoded is Map<String, dynamic>) {
-          return ApiResponse.fromJson(decoded, fromJson);
-        }
-        return ApiResponse.success(
-          data: fromJson != null ? fromJson(decoded) : null,
-          statusCode: statusCode,
-        );
-      }
-
-      final message = decoded is Map ? decoded['message'] as String? : null;
-      throw AppException.fromStatusCode(statusCode, message);
-    } on AppException {
-      rethrow;
-    } catch (e) {
-      throw AppException.parseError(e.toString());
+      decoded = jsonDecode(response.body);
+    } catch (_) {
+      decoded = null;
     }
+    final message = decoded is Map ? decoded['message'] as String? : null;
+
+    if (decoded != null) AppLogger.response(statusCode, '', body: decoded);
+
+    if (statusCode == 401) throw AppException.unauthorized(message);
+    if (statusCode == 403) throw AppException.forbidden(message);
+    if (statusCode == 404) throw AppException.notFound(message);
+    if (statusCode == 429) {
+      throw AppException(
+        message: message ?? 'Too many attempts. Please try again later.',
+        type: AppErrorType.validation,
+        statusCode: statusCode,
+      );
+    }
+    if (statusCode >= 500) throw AppException.serverError(message);
+
+    if (decoded == null) {
+      throw AppException.parseError();
+    }
+
+    if (statusCode >= 200 && statusCode < 300) {
+      if (decoded is Map<String, dynamic>) {
+        return ApiResponse.fromJson(decoded, fromJson);
+      }
+      return ApiResponse.success(
+        data: fromJson != null ? fromJson(decoded) : null,
+        statusCode: statusCode,
+      );
+    }
+
+    throw AppException.fromStatusCode(statusCode, message);
   }
 
   AppException _handleError(dynamic error) {

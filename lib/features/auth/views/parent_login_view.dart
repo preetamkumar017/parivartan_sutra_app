@@ -1,29 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../controllers/login_controller.dart';
 import 'forgot_password_view.dart';
 import 'sign_up_view.dart';
 
-class ParentLoginView extends StatefulWidget {
+class ParentLoginView extends GetView<LoginController> {
   const ParentLoginView({super.key});
-
-  @override
-  State<ParentLoginView> createState() => _ParentLoginViewState();
-}
-
-class _ParentLoginViewState extends State<ParentLoginView> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _obscurePassword = true;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
 
   InputDecoration _inputDecoration({
     required String hint,
@@ -77,121 +63,154 @@ class _ParentLoginViewState extends State<ParentLoginView> {
                     ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Image.asset(
-                        'assets/logo.jpeg',
-                        width: width * 0.42,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    Text(
-                      'Welcome Back',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.headlineLarge,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Glad to see you again!',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.titleMedium,
-                    ),
-                    const SizedBox(height: 30),
-                    TextField(
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: _inputDecoration(
-                        hint: 'Email',
-                        prefix: Icons.email,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: _inputDecoration(
-                        hint: 'Password',
-                        prefix: Icons.lock,
-                        suffix: IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: AppColors.textSecondaryLight,
-                          ),
+                child: Form(
+                  key: controller.formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Image.asset(
+                          'assets/logo.jpeg',
+                          width: width * 0.42,
+                          fit: BoxFit.contain,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Password must be at least 8 characters.',
-                      style: AppTextStyles.inputError.copyWith(
-                        color: AppColors.error,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+                      const SizedBox(height: 28),
+                      Text(
+                        'Welcome Back',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.headlineLarge,
                       ),
-                    ),
-                    const SizedBox(height: 26),
-                    SizedBox(
-                      height: 60,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(999),
-                          gradient: const LinearGradient(
-                            colors: [AppColors.primaryLight, AppColors.primary],
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                          ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Glad to see you again!',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.titleMedium,
+                      ),
+                      const SizedBox(height: 30),
+                      TextFormField(
+                        controller: controller.mobileController,
+                        keyboardType: TextInputType.phone,
+                        decoration: _inputDecoration(
+                          hint: 'Mobile Number',
+                          prefix: Icons.phone_outlined,
                         ),
-                        child: ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(
-                            shadowColor: Colors.transparent,
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: AppColors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999),
+                        validator: (value) {
+                          final v = value?.trim() ?? '';
+                          if (v.isEmpty) return 'Mobile number is required';
+                          if (v.length < AppConstants.phoneLength) {
+                            return 'Enter a valid mobile number';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Obx(
+                        () => TextFormField(
+                          controller: controller.passwordController,
+                          obscureText: controller.obscurePassword.value,
+                          decoration: _inputDecoration(
+                            hint: 'Password',
+                            prefix: Icons.lock_outline,
+                            suffix: IconButton(
+                              onPressed: controller.toggleObscurePassword,
+                              icon: Icon(
+                                controller.obscurePassword.value
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                                color: AppColors.textSecondaryLight,
+                              ),
                             ),
                           ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Password is required';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      Obx(() {
+                        if (controller.errorMessage.value.isEmpty) {
+                          return const SizedBox(height: 12);
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 12),
                           child: Text(
-                            'Log In',
-                            style: AppTextStyles.button,
+                            controller.errorMessage.value,
+                            style: AppTextStyles.inputError.copyWith(
+                              color: AppColors.error,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 60,
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            gradient: const LinearGradient(
+                              colors: [AppColors.primaryLight, AppColors.primary],
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                            ),
+                          ),
+                          child: Obx(
+                            () => ElevatedButton(
+                              onPressed:
+                                  controller.isLoading.value ? null : controller.login,
+                              style: ElevatedButton.styleFrom(
+                                shadowColor: Colors.transparent,
+                                backgroundColor: Colors.transparent,
+                                foregroundColor: AppColors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                              ),
+                              child: controller.isLoading.value
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.4,
+                                        valueColor: AlwaysStoppedAnimation(
+                                          AppColors.white,
+                                        ),
+                                      ),
+                                    )
+                                  : Text('Log In', style: AppTextStyles.button),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    TextButton(
-                      onPressed: () => Get.to(() => const ForgotPasswordView()),
-                      child: Text(
-                        'Forgot Password?',
-                        style: AppTextStyles.titleLarge.copyWith(
-                          color: AppColors.primaryLight,
-                          decoration: TextDecoration.underline,
-                          fontWeight: FontWeight.w500,
+                      const SizedBox(height: 24),
+                      TextButton(
+                        onPressed: () => Get.to(() => const ForgotPasswordView()),
+                        child: Text(
+                          'Forgot Password?',
+                          style: AppTextStyles.titleLarge.copyWith(
+                            color: AppColors.primaryLight,
+                            decoration: TextDecoration.underline,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ),
-                    TextButton(
-                      onPressed: () => Get.to(() => const SignUpView()),
-                      child: Text(
-                        'Sign Up',
-                        style: AppTextStyles.titleLarge.copyWith(
-                          color: AppColors.primaryLight,
-                          decoration: TextDecoration.underline,
-                          fontWeight: FontWeight.w500,
+                      TextButton(
+                        onPressed: () => Get.to(() => const SignUpView()),
+                        child: Text(
+                          'Sign Up',
+                          style: AppTextStyles.titleLarge.copyWith(
+                            color: AppColors.primaryLight,
+                            decoration: TextDecoration.underline,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

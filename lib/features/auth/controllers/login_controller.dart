@@ -7,105 +7,39 @@ import '../../../core/utils/app_logger.dart';
 import '../models/auth_model.dart';
 import '../services/auth_api_service.dart';
 
-enum LoginMode { parent, student }
-
+/// Single mobile+password login for both parent and student accounts —
+/// the backend's `POST login` auto-detects role from `mobile`, so there's
+/// no separate OTP flow and no mode toggle to drive.
 class LoginController extends GetxController {
   final AuthApiService _authService = AuthApiService();
 
-  // ── Observables ────────────────────────────────────────────────────────────
-  final isLoading    = false.obs;
-  final loginMode    = LoginMode.parent.obs;
-  final otpSent      = false.obs;
+  final isLoading = false.obs;
   final errorMessage = ''.obs;
-
-  // ── Form controllers ───────────────────────────────────────────────────────
-  final emailController    = TextEditingController();
-  final passwordController = TextEditingController();
-  final otpController      = TextEditingController();
-
-  final formKey        = GlobalKey<FormState>();
-  final otpFormKey     = GlobalKey<FormState>();
   final obscurePassword = true.obs;
+
+  final mobileController = TextEditingController();
+  final passwordController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
 
   @override
   void onClose() {
-    emailController.dispose();
+    mobileController.dispose();
     passwordController.dispose();
-    otpController.dispose();
     super.onClose();
   }
 
-  void switchMode(LoginMode mode) {
-    loginMode.value = mode;
-    otpSent.value   = false;
-    errorMessage.value = '';
-    emailController.clear();
-    passwordController.clear();
-    otpController.clear();
+  void toggleObscurePassword() {
+    obscurePassword.value = !obscurePassword.value;
   }
 
-  // ── Parent OTP flow ────────────────────────────────────────────────────────
-
-  Future<void> sendOtp() async {
+  Future<void> login() async {
     if (!formKey.currentState!.validate()) return;
-    isLoading.value    = true;
+    isLoading.value = true;
     errorMessage.value = '';
 
     try {
-      final res = await _authService.sendOtp(emailController.text.trim());
-      if (res.success) {
-        otpSent.value = true;
-        Get.snackbar(
-          'OTP Sent',
-          res.message ?? 'Check your email for the OTP.',
-          snackPosition: SnackPosition.BOTTOM,
-        );
-      } else {
-        errorMessage.value = res.message ?? 'Failed to send OTP.';
-      }
-    } catch (e) {
-      final ex = ErrorHandler.handle(e);
-      errorMessage.value = ex.message;
-      AppLogger.error('LoginController', 'sendOtp error: $e');
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  Future<void> verifyOtp() async {
-    if (!otpFormKey.currentState!.validate()) return;
-    isLoading.value    = true;
-    errorMessage.value = '';
-
-    try {
-      final res = await _authService.verifyOtp(
-        emailController.text.trim(),
-        otpController.text.trim(),
-      );
-      if (res.success && res.data != null) {
-        await _saveSessionAndNavigate(res.data!);
-      } else {
-        errorMessage.value = res.message ?? 'Invalid OTP.';
-      }
-    } catch (e) {
-      final ex = ErrorHandler.handle(e);
-      errorMessage.value = ex.message;
-      AppLogger.error('LoginController', 'verifyOtp error: $e');
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  // ── Student login ──────────────────────────────────────────────────────────
-
-  Future<void> studentLogin() async {
-    if (!formKey.currentState!.validate()) return;
-    isLoading.value    = true;
-    errorMessage.value = '';
-
-    try {
-      final res = await _authService.studentLogin(
-        emailController.text.trim(),
+      final res = await _authService.login(
+        mobileController.text.trim(),
         passwordController.text,
       );
       if (res.success && res.data != null) {
@@ -116,20 +50,19 @@ class LoginController extends GetxController {
     } catch (e) {
       final ex = ErrorHandler.handle(e);
       errorMessage.value = ex.message;
-      AppLogger.error('LoginController', 'studentLogin error: $e');
+      AppLogger.error('LoginController', 'login error: $e');
     } finally {
       isLoading.value = false;
     }
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
   Future<void> _saveSessionAndNavigate(AuthUserModel user) async {
     await SessionManager.instance.saveSession(
-      token:        user.tokens.accessToken,
-      userId:       user.id.toString(),
-      refreshToken: user.tokens.refreshToken,
-      email:        user.email,
+      token: user.token,
+      userId: user.id.toString(),
+      role: user.role,
+      mobile: user.mobile,
+      email: user.email,
     );
     Get.offAllNamed(AppRoutes.home);
   }

@@ -1,51 +1,49 @@
-class AuthTokenModel {
-  final String accessToken;
-  final String refreshToken;
-  final String tokenType;
-  final int expiresIn;
-
-  const AuthTokenModel({
-    required this.accessToken,
-    required this.refreshToken,
-    required this.tokenType,
-    required this.expiresIn,
-  });
-
-  factory AuthTokenModel.fromJson(Map<String, dynamic> json) {
-    return AuthTokenModel(
-      accessToken:  json['access_token']  as String? ?? '',
-      refreshToken: json['refresh_token'] as String? ?? '',
-      tokenType:    json['token_type']    as String? ?? 'Bearer',
-      expiresIn:    json['expires_in']    as int?    ?? 3600,
-    );
-  }
-}
-
+/// Matches the real response of `POST login`
+/// (`App\Modules\Api\Controllers\AuthController::login()`):
+/// ```
+/// { token, token_type, expires_at,
+///   user: { id, role, profile_id, name, mobile, email } }
+/// ```
+/// No `refresh_token` — the backend doesn't implement a refresh flow;
+/// tokens are just long-lived (30 days) and re-issued via another `login`.
 class AuthUserModel {
   final int id;
-  final String name;
-  final String email;
   final String role;
-  final AuthTokenModel tokens;
+  final int? profileId;
+  final String? name;
+  final String mobile;
+  final String? email;
+  final String token;
+  final String tokenType;
+  final String expiresAt;
 
   const AuthUserModel({
     required this.id,
-    required this.name,
-    required this.email,
     required this.role,
-    required this.tokens,
+    this.profileId,
+    this.name,
+    required this.mobile,
+    this.email,
+    required this.token,
+    required this.tokenType,
+    required this.expiresAt,
   });
 
-  /// Backend returns flat structure:
-  /// { access_token, refresh_token, token_type, expires_in, user: {id,name,email,role} }
   factory AuthUserModel.fromJson(Map<String, dynamic> json) {
-    final user = json['user'] as Map<String, dynamic>? ?? json;
+    final user = json['user'] as Map<String, dynamic>? ?? const {};
     return AuthUserModel(
-      id:     user['id']    as int?    ?? 0,
-      name:   user['name']  as String? ?? '',
-      email:  user['email'] as String? ?? '',
-      role:   user['role']  as String? ?? '',
-      tokens: AuthTokenModel.fromJson(json),
+      id: user['id'] as int? ?? 0,
+      role: user['role'] as String? ?? '',
+      profileId: user['profile_id'] as int?,
+      name: user['name'] as String?,
+      mobile: user['mobile'] as String? ?? '',
+      email: user['email'] as String?,
+      token: json['token'] as String? ?? '',
+      tokenType: json['token_type'] as String? ?? 'Bearer',
+      expiresAt: json['expires_at'] as String? ?? '',
     );
   }
+
+  bool get isParent => role == 'parent';
+  bool get isStudent => role == 'student';
 }

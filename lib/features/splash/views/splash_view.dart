@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/routes/app_routes.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/services/shared_prefs_service.dart';
+import '../../../core/session/session_manager.dart';
 import '../../../core/theme/app_colors.dart';
 
 class SplashView extends StatefulWidget {
@@ -21,12 +23,21 @@ class _SplashViewState extends State<SplashView> {
 
   Future<void> _handleNavigation() async {
     await Future.delayed(const Duration(seconds: 2));
-    final prefs = await SharedPreferences.getInstance();
-    final seen = prefs.getBool('seen_onboarding') ?? false;
 
     if (!mounted) return;
 
-    if (seen) {
+    // main.dart already called SessionManager.restoreSession() before
+    // runApp(), so a logged-in user goes straight home instead of being
+    // sent back through onboarding/login on every cold start.
+    if (SessionManager.instance.isLoggedIn()) {
+      Get.offAllNamed(AppRoutes.home);
+      return;
+    }
+
+    final seenOnboarding = SharedPrefsService.instance
+        .getBool(AppConstants.keyOnboardingDone);
+
+    if (seenOnboarding) {
       Get.offAllNamed(AppRoutes.login);
     } else {
       Get.offAllNamed(AppRoutes.onboarding);

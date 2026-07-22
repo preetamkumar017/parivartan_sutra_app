@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../../core/session/session_manager.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../shared/widgets/app_button.dart';
 import '../../../shared/widgets/app_loader.dart';
 import '../../base/base_view.dart';
 import '../controllers/home_controller.dart';
-import '../models/home_model.dart';
+import '../models/child_model.dart';
 
 class HomeView extends BaseView<HomeController> {
   const HomeView({super.key});
@@ -17,16 +18,8 @@ class HomeView extends BaseView<HomeController> {
       title: Text('app_name'.tr),
       actions: [
         IconButton(
-          icon: const Icon(Icons.brightness_6_outlined),
-          onPressed: () {
-            Get.changeThemeMode(
-              Get.isDarkMode ? ThemeMode.light : ThemeMode.dark,
-            );
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.language_outlined),
-          onPressed: () => _showLanguageDialog(context),
+          icon: const Icon(Icons.logout_outlined),
+          onPressed: controller.logout,
         ),
       ],
     );
@@ -34,6 +27,10 @@ class HomeView extends BaseView<HomeController> {
 
   @override
   Widget buildBody(BuildContext context) {
+    if (!controller.isParent) {
+      return _buildNonParentPlaceholder(context);
+    }
+
     return Obx(() {
       if (controller.isPageLoading) {
         return const AppLoader(fullScreen: false);
@@ -44,23 +41,18 @@ class HomeView extends BaseView<HomeController> {
         color: AppColors.primary,
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(
-              child: _buildHeader(context),
-            ),
-            SliverToBoxAdapter(
-              child: _buildStatsRow(context),
-            ),
+            SliverToBoxAdapter(child: _buildHeader(context)),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: controller.items.isEmpty
+              sliver: controller.children.isEmpty
                   ? SliverToBoxAdapter(child: _buildEmptyState(context))
                   : SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildItemCard(
+                        (context, index) => _buildChildCard(
                           context,
-                          controller.items[index],
+                          controller.children[index],
                         ),
-                        childCount: controller.items.length,
+                        childCount: controller.children.length,
                       ),
                     ),
             ),
@@ -72,104 +64,29 @@ class HomeView extends BaseView<HomeController> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final mobile = SessionManager.instance.getUserMobile();
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'welcome'.tr,
+            mobile != null ? 'Welcome, $mobile' : 'welcome'.tr,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppColors.textSecondaryLight,
                 ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Parivartan Sutra',
+            'Your Children',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
-          const SizedBox(height: 16),
-          AppButton(
-            label: 'dashboard'.tr,
-            onPressed: controller.fetchDashboard,
-            isLoading: controller.isLoading,
-            height: 48,
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatsRow(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildStatCard(
-              context,
-              label: 'Items',
-              value: '${controller.items.length}',
-              icon: Icons.list_alt_rounded,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              context,
-              label: 'Active',
-              value: '0',
-              icon: Icons.check_circle_outline,
-              color: AppColors.success,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatCard(
-              context,
-              label: 'Pending',
-              value: '0',
-              icon: Icons.pending_outlined,
-              color: AppColors.warning,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    BuildContext context, {
-    required String label,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: AppTextStyles.titleLarge.copyWith(color: color),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildItemCard(BuildContext context, HomeModel item) {
+  Widget _buildChildCard(BuildContext context, ChildModel child) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
@@ -177,25 +94,22 @@ class HomeView extends BaseView<HomeController> {
         leading: CircleAvatar(
           backgroundColor: AppColors.primaryLight.withValues(alpha: 0.2),
           child: Text(
-            item.title.isNotEmpty ? item.title[0].toUpperCase() : '?',
+            child.name.isNotEmpty ? child.name[0].toUpperCase() : '?',
             style: AppTextStyles.titleMedium.copyWith(color: AppColors.primary),
           ),
         ),
         title: Text(
-          item.title,
+          child.name,
           style: Theme.of(context).textTheme.titleSmall,
         ),
         subtitle: Text(
-          item.description,
+          'Class ${child.className}',
           style: Theme.of(context).textTheme.bodySmall,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
         ),
-        trailing: const Icon(
-          Icons.chevron_right,
-          color: AppColors.textSecondaryLight,
+        trailing: Icon(
+          child.hasLogin ? Icons.verified_user_outlined : Icons.person_add_alt_outlined,
+          color: child.hasLogin ? AppColors.success : AppColors.textSecondaryLight,
         ),
-        onTap: () => controller.onItemTap(item),
       ),
     );
   }
@@ -207,13 +121,13 @@ class HomeView extends BaseView<HomeController> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Icon(
-            Icons.inbox_outlined,
+            Icons.family_restroom_outlined,
             size: 64,
             color: AppColors.textHintLight,
           ),
           const SizedBox(height: 16),
           Text(
-            'no_data'.tr,
+            'No children added yet',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppColors.textSecondaryLight,
                 ),
@@ -221,7 +135,7 @@ class HomeView extends BaseView<HomeController> {
           const SizedBox(height: 24),
           AppButton(
             label: 'retry'.tr,
-            onPressed: controller.fetchDashboard,
+            onPressed: controller.fetchChildren,
             type: AppButtonType.outlined,
             width: 160,
             height: 44,
@@ -231,26 +145,25 @@ class HomeView extends BaseView<HomeController> {
     );
   }
 
-  void _showLanguageDialog(BuildContext context) {
-    Get.dialog(
-      AlertDialog(
-        title: Text('language'.tr),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+  Widget _buildNonParentPlaceholder(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            ListTile(
-              title: const Text('English'),
-              onTap: () {
-                Get.updateLocale(const Locale('en', 'US'));
-                Get.back();
-              },
+            const Icon(
+              Icons.construction_outlined,
+              size: 64,
+              color: AppColors.textHintLight,
             ),
-            ListTile(
-              title: const Text('हिन्दी'),
-              onTap: () {
-                Get.updateLocale(const Locale('hi', 'IN'));
-                Get.back();
-              },
+            const SizedBox(height: 16),
+            Text(
+              'Student dashboard not built yet.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textSecondaryLight,
+                  ),
             ),
           ],
         ),

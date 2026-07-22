@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/routes/app_routes.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/services/shared_prefs_service.dart';
 import '../../../core/theme/app_colors.dart';
 
 class OnboardingThreeView extends GetView {
@@ -103,8 +104,8 @@ class OnboardingThreeView extends GetView {
                     ),
                   ),
                   onPressed: () async {
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.setBool('seen_onboarding', true);
+                    await SharedPrefsService.instance
+                        .setBool(AppConstants.keyOnboardingDone, true);
                     Get.offAllNamed(AppRoutes.login);
                   },
                   child: const Text(

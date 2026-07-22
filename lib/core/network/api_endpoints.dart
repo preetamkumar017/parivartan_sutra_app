@@ -1,33 +1,30 @@
+/// Mirrors `../parivartan-sutra-new/app/Config/Routes.php`'s `api` group
+/// and its CLAUDE.md's "Mobile API" section exactly — no speculative paths.
 class ApiEndpoints {
   ApiEndpoints._();
 
   // ── Auth ──────────────────────────────────────────────────────────────────
-  static const String login        = '/auth/login';
-  static const String studentLogin = '/auth/student-login';
-  static const String sendOtp      = '/auth/send-otp';
-  static const String verifyOtp    = '/auth/verify-otp';
-  static const String refreshToken = '/auth/refresh';
-  static const String logout       = '/auth/logout';
-  static const String register     = '/auth/register';
+  static const String login = 'login';
+  static const String logout = 'logout';
 
-  // ── User ──────────────────────────────────────────────────────────────────
-  static const String userProfile   = '/user/profile';
-  static const String updateProfile = '/user/profile/update';
-
-  // ── Children ──────────────────────────────────────────────────────────────
-  static const String children   = '/child';
-  static String childById(int id) => '/child/$id';
-
-  // ── Assessment ────────────────────────────────────────────────────────────
-  static String parentTestStart(int childId) => '/test/parent/start/$childId';
-  static const String parentTestSubmit  = '/test/parent/submit';
-  static const String studentTestStart  = '/test/student/start';
-  static const String studentTestSubmit = '/test/student/submit';
+  // ── Interview (any authenticated role) ───────────────────────────────────
+  static const String interviewStatus = 'interview/status';
+  static const String interviewStart = 'interview/start';
+  static const String interviewQuestions = 'interview/questions';
+  static const String interviewSubmit = 'interview/submit';
+  static const String interviewResult = 'interview/result';
 
   // ── Strategy ──────────────────────────────────────────────────────────────
-  static String strategyPreview(int childId)   => '/strategy/preview/$childId';
-  static String strategyDashboard(int childId) => '/strategy/dashboard/$childId';
+  static const String strategyAssigned = 'strategy/assigned';
+  static const String parentStrategyOrder = 'parent/strategy/order';
+  static const String parentStrategyVerify = 'parent/strategy/verify';
 
-  // ── Home ──────────────────────────────────────────────────────────────────
-  static const String dashboard = '/dashboard';
+  // ── Parent-only ───────────────────────────────────────────────────────────
+  static const String parentChildren = 'parent/children';
+  static String parentCreateChildLogin(int childId) =>
+      'parent/children/$childId/create-login';
+  static const String parentDashboard = 'parent/dashboard';
+
+  // ── Student-only ──────────────────────────────────────────────────────────
+  static const String studentDashboard = 'student/dashboard';
 }

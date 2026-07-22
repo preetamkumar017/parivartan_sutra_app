@@ -1,36 +1,39 @@
 import 'package:get/get.dart';
 import '../../../core/network/api_endpoints.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/session/session_manager.dart';
 import '../../../core/utils/app_logger.dart';
 import '../../base/base_controller.dart';
-import '../models/home_model.dart';
+import '../models/child_model.dart';
 
+/// First real feature screen: a parent's list of children, from the
+/// actual backend (`GET parent/children`) rather than the old generic
+/// `/dashboard` template list.
 class HomeController extends BaseController {
-  // ─── State ───────────────────────────────────────────────────────────────────
-  final RxList<HomeModel> items = <HomeModel>[].obs;
-  final RxString welcomeMessage = ''.obs;
+  final RxList<ChildModel> children = <ChildModel>[].obs;
 
-  // ─── Service ─────────────────────────────────────────────────────────────────
-  final _apiService = _HomeApiService();
+  final _apiService = _ParentApiService();
 
-  // ─── Lifecycle ───────────────────────────────────────────────────────────────
+  bool get isParent => SessionManager.instance.isParent();
 
   @override
   void onInit() {
     super.onInit();
-    fetchDashboard();
+    if (isParent) {
+      fetchChildren();
+    }
   }
 
-  // ─── Actions ─────────────────────────────────────────────────────────────────
-
-  Future<void> fetchDashboard() async {
+  Future<void> fetchChildren() async {
     await runWithLoading(
       () async {
-        final response = await _apiService.getDashboard();
+        final response = await _apiService.getChildren();
         if (response.success && response.data != null) {
-          items.assignAll(response.data!);
-          welcomeMessage.value = 'welcome_back'.tr;
-          AppLogger.success('HomeController', 'Dashboard loaded: ${items.length} items');
+          children.assignAll(response.data!);
+          AppLogger.success(
+            'HomeController',
+            'Loaded ${children.length} children',
+          );
         }
       },
       pageLoading: true,
@@ -41,33 +44,29 @@ class HomeController extends BaseController {
   @override
   Future<void> refresh() async {
     await runWithRefresh(() async {
-      final response = await _apiService.getDashboard();
+      final response = await _apiService.getChildren();
       if (response.success && response.data != null) {
-        items.assignAll(response.data!);
+        children.assignAll(response.data!);
       }
     });
   }
 
-  void onItemTap(HomeModel item) {
-    AppLogger.info('HomeController', 'Item tapped: ${item.id}');
-    // Navigate to detail
-    // Get.toNamed(AppRoutes.detail, arguments: item);
+  Future<void> logout() async {
+    await SessionManager.instance.logout();
   }
 }
 
-// ─── Home API Service ────────────────────────────────────────────────────────
-
-class _HomeApiService extends ApiService {
-  Future<dynamic> getDashboard() async {
+class _ParentApiService extends ApiService {
+  Future<dynamic> getChildren() async {
     return await get(
-      ApiEndpoints.dashboard,
+      ApiEndpoints.parentChildren,
       fromJson: (data) {
         if (data is List) {
           return data
-              .map((e) => HomeModel.fromJson(e as Map<String, dynamic>))
+              .map((e) => ChildModel.fromJson(e as Map<String, dynamic>))
               .toList();
         }
-        return <HomeModel>[];
+        return <ChildModel>[];
       },
     );
   }

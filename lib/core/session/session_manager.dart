@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import '../../features/auth/services/auth_api_service.dart';
 import '../constants/app_constants.dart';
 import '../network/api_client.dart';
 import '../services/secure_storage_service.dart';
@@ -20,7 +21,8 @@ class SessionManager {
   Future<void> saveSession({
     required String token,
     required String userId,
-    String? refreshToken,
+    required String role,
+    String? mobile,
     String? email,
   }) async {
     _cachedToken = token;
@@ -28,15 +30,15 @@ class SessionManager {
 
     await Future.wait([
       _secureStorage.write(AppConstants.keyAuthToken, token),
-      if (refreshToken != null)
-        _secureStorage.write(AppConstants.keyRefreshToken, refreshToken),
       _prefs.setString(AppConstants.keyUserId, userId),
+      _prefs.setString(AppConstants.keyUserRole, role),
+      if (mobile != null) _prefs.setString(AppConstants.keyUserMobile, mobile),
       if (email != null) _prefs.setString(AppConstants.keyUserEmail, email),
       _prefs.setBool(AppConstants.keyIsLoggedIn, true),
     ]);
 
     ApiClient.instance.setAuthToken(token);
-    AppLogger.info('SessionManager', 'Session saved for userId: $userId');
+    AppLogger.info('SessionManager', 'Session saved for userId: $userId ($role)');
   }
 
   Future<String?> getToken() async {
@@ -46,13 +48,15 @@ class SessionManager {
     return token;
   }
 
-  Future<String?> getRefreshToken() async {
-    return await _secureStorage.read(AppConstants.keyRefreshToken);
-  }
-
   String? getUserId() => _prefs.getString(AppConstants.keyUserId);
 
+  String? getUserRole() => _prefs.getString(AppConstants.keyUserRole);
+
+  String? getUserMobile() => _prefs.getString(AppConstants.keyUserMobile);
+
   String? getUserEmail() => _prefs.getString(AppConstants.keyUserEmail);
+
+  bool isParent() => getUserRole() == 'parent';
 
   bool isLoggedIn() => _prefs.getBool(AppConstants.keyIsLoggedIn);
 
@@ -112,8 +116,9 @@ class SessionManager {
 
     await Future.wait([
       _secureStorage.delete(AppConstants.keyAuthToken),
-      _secureStorage.delete(AppConstants.keyRefreshToken),
       _prefs.remove(AppConstants.keyUserId),
+      _prefs.remove(AppConstants.keyUserRole),
+      _prefs.remove(AppConstants.keyUserMobile),
       _prefs.remove(AppConstants.keyUserEmail),
       _prefs.setBool(AppConstants.keyIsLoggedIn, false),
     ]);
@@ -123,6 +128,11 @@ class SessionManager {
   }
 
   Future<void> logout() async {
+    try {
+      await AuthApiService().logout();
+    } catch (e) {
+      AppLogger.warning('SessionManager', 'Server-side logout call failed: $e');
+    }
     await clearSession();
     Get.offAllNamed('/login');
     AppLogger.info('SessionManager', 'User logged out');
